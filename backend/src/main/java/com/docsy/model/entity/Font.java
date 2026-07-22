@@ -1,21 +1,23 @@
 package com.docsy.model.entity;
 
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Table;
+
+import java.time.LocalDateTime;
 
 /**
  * 字体实体
  */
 @Data
-@Table("font")
+@TableName("font")
 public class Font {
-    @Id
+    @TableId(type = IdType.AUTO)
     private Long id;
     private String fontName;
     private String fileName;
     private String filePath;
     private Long fileSize;
     private String source;
-    private String createdAt;
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createdAt;
 }

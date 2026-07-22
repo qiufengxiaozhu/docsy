@@ -1,12 +1,14 @@
 package com.docsy.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.docsy.config.DocsyProperties;
 import com.docsy.config.ViewerRegistry;
+import com.docsy.mapper.AppMapper;
+import com.docsy.mapper.PreviewSessionMapper;
 import com.docsy.model.dto.PreviewRequest;
 import com.docsy.model.entity.App;
 import com.docsy.model.entity.PreviewSession;
-import com.docsy.repository.AppRepository;
-import com.docsy.repository.PreviewSessionRepository;
 import com.docsy.security.HmacVerifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +25,6 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -33,22 +34,21 @@ import java.util.*;
 public class PreviewService {
 
     private static final Logger log = LoggerFactory.getLogger(PreviewService.class);
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    private final PreviewSessionRepository sessionRepository;
-    private final AppRepository appRepository;
+    private final PreviewSessionMapper sessionMapper;
+    private final AppMapper appMapper;
     private final ViewerRegistry viewerRegistry;
     private final HmacVerifier hmacVerifier;
     private final DocsyProperties properties;
     private final HttpClient httpClient;
 
-    public PreviewService(PreviewSessionRepository sessionRepository,
-                          AppRepository appRepository,
+    public PreviewService(PreviewSessionMapper sessionMapper,
+                          AppMapper appMapper,
                           ViewerRegistry viewerRegistry,
                           HmacVerifier hmacVerifier,
                           DocsyProperties properties) {
-        this.sessionRepository = sessionRepository;
-        this.appRepository = appRepository;
+        this.sessionMapper = sessionMapper;
+        this.appMapper = appMapper;
         this.viewerRegistry = viewerRegistry;
         this.hmacVerifier = hmacVerifier;
         this.properties = properties;
@@ -59,8 +59,10 @@ public class PreviewService {
      * 验证三方应用签名
      */
     public App verifyApp(String appId, String timestamp, String nonce, String sign) {
-        App app = appRepository.findByAppId(appId)
-                .orElseThrow(() -> new RuntimeException("应用不存在: " + appId));
+        App app = appMapper.selectOne(new LambdaQueryWrapper<App>().eq(App::getAppId, appId));
+        if (app == null) {
+            throw new RuntimeException("应用不存在: " + appId);
+        }
 
         if (app.getIsActive() != 1) {
             throw new RuntimeException("应用已被禁用: " + appId);
@@ -153,11 +155,9 @@ public class PreviewService {
         session.setUserName(request.getUserName() != null ? request.getUserName() : "");
         session.setCallbackUrl(request.getCallbackUrl() != null ? request.getCallbackUrl() : "");
         session.setStatus("active");
-        session.setCreatedAt(now.format(FMT));
-        session.setExpiresAt(expiresAt.format(FMT));
-        session.setUpdatedAt(now.format(FMT));
+        session.setExpiresAt(expiresAt);
 
-        sessionRepository.save(session);
+        sessionMapper.insert(session);
         log.info("创建预览会话: sessionId={}, file={}, type={}, mode={}", sessionId, fileName, viewerType, mode);
 
         Map<String, Object> result = new HashMap<>();
@@ -167,7 +167,7 @@ public class PreviewService {
         result.put("fileType", ext);
         result.put("viewerType", viewerType.name());
         result.put("mode", mode);
-        result.put("expiresAt", expiresAt.format(FMT));
+        result.put("expiresAt", expiresAt.toString());
         return result;
     }
 
@@ -175,8 +175,11 @@ public class PreviewService {
      * 获取会话信息
      */
     public PreviewSession getSession(String sessionId) {
-        PreviewSession session = sessionRepository.findBySessionId(sessionId)
-                .orElseThrow(() -> new RuntimeException("会话不存在: " + sessionId));
+        PreviewSession session = sessionMapper.selectOne(
+                new LambdaQueryWrapper<PreviewSession>().eq(PreviewSession::getSessionId, sessionId));
+        if (session == null) {
+            throw new RuntimeException("会话不存在: " + sessionId);
+        }
 
         if (!"active".equals(session.getStatus())) {
             throw new RuntimeException("会话已过期或关闭");
@@ -229,18 +232,22 @@ public class PreviewService {
     }
 
     /**
-     * 定时清理过期会话
+     * 定时清理过期会话（使用 Java 侧时间，兼容 SQLite/MySQL）
      */
     @Scheduled(fixedDelay = 60000)
     public void cleanupExpiredSessions() {
-        sessionRepository.expireOldSessions();
+        sessionMapper.update(null, new LambdaUpdateWrapper<PreviewSession>()
+                .set(PreviewSession::getStatus, "expired")
+                .eq(PreviewSession::getStatus, "active")
+                .lt(PreviewSession::getExpiresAt, LocalDateTime.now()));
     }
 
     /**
      * 获取活跃会话列表
      */
     public List<PreviewSession> getActiveSessions() {
-        return sessionRepository.findByStatus("active");
+        return sessionMapper.selectList(
+                new LambdaQueryWrapper<PreviewSession>().eq(PreviewSession::getStatus, "active"));
     }
 
     /**
@@ -248,8 +255,9 @@ public class PreviewService {
      */
     public Map<String, Object> getStats() {
         Map<String, Object> stats = new HashMap<>();
-        stats.put("activeSessions", sessionRepository.countActiveSessions());
-        stats.put("totalSessions", sessionRepository.count());
+        stats.put("activeSessions", sessionMapper.selectCount(
+                new LambdaQueryWrapper<PreviewSession>().eq(PreviewSession::getStatus, "active")));
+        stats.put("totalSessions", sessionMapper.selectCount(null));
         return stats;
     }
 }

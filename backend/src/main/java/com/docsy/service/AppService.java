@@ -1,11 +1,10 @@
 package com.docsy.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.docsy.mapper.AppMapper;
 import com.docsy.model.entity.App;
-import com.docsy.repository.AppRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,12 +14,10 @@ import java.util.UUID;
 @Service
 public class AppService {
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private final AppMapper appMapper;
 
-    private final AppRepository appRepository;
-
-    public AppService(AppRepository appRepository) {
-        this.appRepository = appRepository;
+    public AppService(AppMapper appMapper) {
+        this.appMapper = appMapper;
     }
 
     /**
@@ -34,52 +31,58 @@ public class AppService {
         app.setDescription(description != null ? description : "");
         app.setIsActive(1);
         app.setRateLimit(100);
-        app.setCreatedAt(LocalDateTime.now().format(FMT));
-        app.setUpdatedAt(LocalDateTime.now().format(FMT));
-        return appRepository.save(app);
+        appMapper.insert(app);
+        return app;
     }
 
     /**
      * 获取所有应用
      */
     public List<App> list() {
-        return (List<App>) appRepository.findAll();
+        return appMapper.selectList(null);
     }
 
     /**
      * 根据 appId 获取应用
      */
     public App getByAppId(String appId) {
-        return appRepository.findByAppId(appId)
-                .orElseThrow(() -> new RuntimeException("应用不存在: " + appId));
+        App app = appMapper.selectOne(new LambdaQueryWrapper<App>().eq(App::getAppId, appId));
+        if (app == null) {
+            throw new RuntimeException("应用不存在: " + appId);
+        }
+        return app;
     }
 
     /**
      * 切换应用状态
      */
     public App toggleActive(Long id) {
-        App app = appRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("应用不存在"));
+        App app = appMapper.selectById(id);
+        if (app == null) {
+            throw new RuntimeException("应用不存在");
+        }
         app.setIsActive(app.getIsActive() == 1 ? 0 : 1);
-        app.setUpdatedAt(LocalDateTime.now().format(FMT));
-        return appRepository.save(app);
+        appMapper.updateById(app);
+        return app;
     }
 
     /**
      * 重置密钥
      */
     public App resetSecret(Long id) {
-        App app = appRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("应用不存在"));
+        App app = appMapper.selectById(id);
+        if (app == null) {
+            throw new RuntimeException("应用不存在");
+        }
         app.setAppSecret(UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""));
-        app.setUpdatedAt(LocalDateTime.now().format(FMT));
-        return appRepository.save(app);
+        appMapper.updateById(app);
+        return app;
     }
 
     /**
      * 删除应用
      */
     public void delete(Long id) {
-        appRepository.deleteById(id);
+        appMapper.deleteById(id);
     }
 }

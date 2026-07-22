@@ -6,7 +6,7 @@ server:
 spring:
   application:
     name: docsy
-  # SQLite 数据源
+  # 默认 SQLite 数据源
   datasource:
     url: jdbc:sqlite:${docsy.data-dir:./data}/docsy.db
     driver-class-name: org.sqlite.JDBC
@@ -28,6 +28,14 @@ spring:
     time-zone: Asia/Shanghai
     default-property-inclusion: non_null
 
+# MyBatis-Plus 配置
+mybatis-plus:
+  configuration:
+    # 驼峰命名映射（app_id -> appId）
+    map-underscore-to-camel-case: true
+    # 开发环境打印 SQL
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
 # Docsy 自定义配置
 docsy:
   # 数据目录（SQLite 数据库、上传文件等）
@@ -42,8 +50,12 @@ docsy:
   sign-expire-seconds: 300
   # 预览会话过期时间（分钟）
   session-expire-minutes: 120
-  # OnlyOffice WASM 静态资源路径
-  onlyoffice-path: /static/onlyoffice
+  # OnlyOffice WASM 静态资源路径（文件系统路径，相对于应用运行目录）
+  # 开发环境（从 backend/ 启动）: file:../onlyoffice/
+  # Docker/生产环境: file:/opt/docsy/onlyoffice/
+  onlyoffice-path: file:../onlyoffice/
+  # OnlyOffice 定制化资源路径（优先级高于 onlyoffice-path）
+  onlyoffice-custom-path: file:../onlyoffice-custom/
 
 # Actuator 健康检查
 management:
@@ -62,3 +74,20 @@ logging:
     com.docsy: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n"
+
+---
+# ===== MySQL Profile =====
+spring:
+  config:
+    activate:
+      on-profile: mysql
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:docsy}?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:}
+
+# MySQL 环境下关闭 SQL 日志（生产环境）
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl

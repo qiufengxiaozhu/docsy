@@ -5,6 +5,9 @@ frontend/dist/
 # OnlyOffice WASM 资源（运行时安装，不纳入版本控制）
 onlyoffice/*
 !onlyoffice/README.md
+
+# OnlyOffice 定制化资源（纳入版本控制，不要 ignore）
+# onlyoffice-custom/ 目录不在此列
 frontend/node_modules/
 
 # IDE

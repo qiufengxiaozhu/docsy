@@ -1,16 +1,17 @@
 package com.docsy.model.entity;
 
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Table;
+
+import java.time.LocalDateTime;
 
 /**
  * 预览/编辑会话实体
  */
 @Data
-@Table("preview_session")
+@TableName("preview_session")
 public class PreviewSession {
-    @Id
+    @TableId(type = IdType.AUTO)
     private Long id;
     private String sessionId;
     private String appId;
@@ -24,7 +25,9 @@ public class PreviewSession {
     private String userName;
     private String callbackUrl;
     private String status;
-    private String createdAt;
-    private String expiresAt;
-    private String updatedAt;
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createdAt;
+    private LocalDateTime expiresAt;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updatedAt;
 }

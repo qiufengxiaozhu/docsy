@@ -34,9 +34,12 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/admin/**")
                 .addResourceLocations("classpath:/static/admin/");
 
-        // OnlyOffice WASM 静态资源
+        // OnlyOffice WASM 静态资源（定制化目录优先，原始资源兜底）
         registry.addResourceHandler("/onlyoffice/**")
-                .addResourceLocations("classpath:/static/onlyoffice/");
+                .addResourceLocations(
+                        properties.getOnlyofficeCustomPath(),
+                        properties.getOnlyofficePath()
+                );
 
         // 默认静态资源
         registry.addResourceHandler("/static/**")

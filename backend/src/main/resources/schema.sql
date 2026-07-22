@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS sys_config (
 
 -- 初始数据：默认管理员（密码: admin123，BCrypt 加密）
 INSERT OR IGNORE INTO sys_user (username, password, nickname)
-VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '管理员');
+VALUES ('admin', '$2a$10$dcsMT15A0ZMIIKk/LtkriuRv.gs0gMYwHa7pW1Iq23nMQZZCsodta', '管理员');
 
 -- 初始配置
 INSERT OR IGNORE INTO sys_config (config_key, config_value, description)

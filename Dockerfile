@@ -33,8 +33,11 @@ COPY --from=backend-build /build/backend/target/docsy.jar ./docsy.jar
 # 复制前端产物到静态资源目录
 COPY --from=frontend-build /build/dist/ ./static/admin/
 
-# 复制 OnlyOffice WASM 静态资源（如果有）
-COPY onlyoffice/ ./static/onlyoffice/
+# 复制 OnlyOffice WASM 静态资源（文件系统方式加载，不打入 JAR）
+COPY onlyoffice/ ./onlyoffice/
+
+# 复制 OnlyOffice 定制化资源（优先级高于原始资源）
+COPY onlyoffice-custom/ ./onlyoffice-custom/
 
 # 数据目录
 RUN mkdir -p /app/data/files
@@ -52,4 +55,6 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 # 启动
 ENTRYPOINT ["java", "-jar", "docsy.jar", \
     "--docsy.data-dir=/app/data", \
-    "--docsy.file-store=/app/data/files"]
+    "--docsy.file-store=/app/data/files", \
+    "--docsy.onlyoffice-path=file:/app/onlyoffice/", \
+    "--docsy.onlyoffice-custom-path=file:/app/onlyoffice-custom/"]

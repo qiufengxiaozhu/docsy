@@ -27,8 +27,11 @@ public class DocsyProperties {
     /** 预览会话过期时间（分钟） */
     private int sessionExpireMinutes = 120;
 
-    /** OnlyOffice WASM 静态资源路径 */
-    private String onlyofficePath = "/static/onlyoffice";
+    /** OnlyOffice WASM 静态资源路径（文件系统路径） */
+    private String onlyofficePath = "file:../onlyoffice/";
+
+    /** OnlyOffice 定制化资源路径（优先级高于 onlyofficePath） */
+    private String onlyofficeCustomPath = "file:../onlyoffice-custom/";
 
     @Data
     public static class Jwt {

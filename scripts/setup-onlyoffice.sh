@@ -27,7 +27,7 @@ if [ -f README.md ]; then
     mv README.md /tmp/docsy-onlyoffice-readme.md
 fi
 
-git clone --depth 1 "$REPO_URL" .
+git clone --depth 1 --branch 9.3.0.133 "$REPO_URL" .
 
 # 恢复 README.md
 if [ -f /tmp/docsy-onlyoffice-readme.md ]; then

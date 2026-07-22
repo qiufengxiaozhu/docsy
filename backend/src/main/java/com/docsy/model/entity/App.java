@@ -1,16 +1,17 @@
 package com.docsy.model.entity;
 
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Table;
+
+import java.time.LocalDateTime;
 
 /**
  * 三方应用实体
  */
 @Data
-@Table("app")
+@TableName("app")
 public class App {
-    @Id
+    @TableId(type = IdType.AUTO)
     private Long id;
     private String appId;
     private String appName;
@@ -18,6 +19,8 @@ public class App {
     private String description;
     private Integer isActive;
     private Integer rateLimit;
-    private String createdAt;
-    private String updatedAt;
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createdAt;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updatedAt;
 }
