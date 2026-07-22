@@ -1,6 +1,10 @@
 # Build output
 backend/target/
 frontend/dist/
+
+# OnlyOffice WASM 资源（运行时安装，不纳入版本控制）
+onlyoffice/*
+!onlyoffice/README.md
 frontend/node_modules/
 
 # IDE
