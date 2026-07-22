@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<!-- 统一预览 UI Shell Fragment：深色工具栏 + 浅色内容区，风格对齐 OnlyOffice -->
+
+<!-- 头部：通用 CSS -->
+<head th:fragment="head(title)">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${title}">文件预览</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+        /* 工具栏 - OnlyOffice 深色风格 */
+        .viewer-toolbar {
+            height: 48px;
+            background: #2c2c2c;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            border-bottom: 1px solid #1a1a1a;
+            user-select: none;
+        }
+        .viewer-toolbar .left { display: flex; align-items: center; gap: 12px; }
+        .viewer-toolbar .right { display: flex; align-items: center; gap: 8px; }
+        .viewer-toolbar .file-name {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .viewer-toolbar .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .viewer-toolbar .badge-edit { background: #4caf50; color: #fff; }
+        .viewer-toolbar .badge-view { background: #607d8b; color: #fff; }
+        .viewer-toolbar .badge-type { background: #455a64; color: #cfd8dc; margin-left: 4px; }
+
+        .btn-toolbar {
+            background: transparent;
+            border: 1px solid #555;
+            color: #ccc;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .btn-toolbar:hover { background: #444; color: #fff; border-color: #777; }
+        .btn-toolbar svg { width: 16px; height: 16px; vertical-align: middle; }
+
+        /* 内容区 */
+        .viewer-content {
+            height: calc(100vh - 48px - 28px);
+            background: #f5f5f5;
+            overflow: auto;
+            position: relative;
+        }
+
+        /* 状态栏 */
+        .viewer-status {
+            height: 28px;
+            background: #2c2c2c;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            border-top: 1px solid #1a1a1a;
+        }
+        .viewer-status span {
+            color: #999;
+            font-size: 12px;
+            margin-right: 24px;
+        }
+    </style>
+</head>
+
+<!-- 工具栏 Fragment -->
+<div th:fragment="toolbar" class="viewer-toolbar">
+    <div class="left">
+        <span class="file-name" th:text="${fileName}">document.docx</span>
+        <span class="badge" th:classappend="${editable} ? 'badge-edit' : 'badge-view'"
+              th:text="${editable} ? '编辑' : '预览'">预览</span>
+        <span class="badge badge-type" th:text="${#strings.toUpperCase(fileType)}">DOCX</span>
+    </div>
+    <div class="right">
+        <button class="btn-toolbar" onclick="handleDownload()" title="下载">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            下载
+        </button>
+        <button class="btn-toolbar" onclick="handleFullscreen()" title="全屏">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </button>
+    </div>
+</div>
+
+<!-- 状态栏 Fragment -->
+<div th:fragment="statusbar" class="viewer-status">
+    <span th:text="'文件类型: ' + ${#strings.toUpperCase(fileType)}">文件类型: DOCX</span>
+    <span th:if="${session.fileSize != null}" th:text="'大小: ' + ${#numbers.formatDecimal(session.fileSize / 1024.0, 0, 1)} + ' KB'">大小: 0 KB</span>
+    <span th:text="'模式: ' + (${editable} ? '编辑' : '只读')">模式: 只读</span>
+</div>
+
+<!-- 通用 JS -->
+<script th:fragment="scripts">
+    function handleDownload() {
+        const url = document.querySelector('[data-file-url]')?.dataset.fileUrl;
+        if (url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '';
+            a.click();
+        }
+    }
+    function handleFullscreen() {
+        const content = document.querySelector('.viewer-content');
+        if (content) {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                content.requestFullscreen();
+            }
+        }
+    }
+</script>
+</html>

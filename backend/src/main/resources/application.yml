@@ -1,0 +1,64 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: docsy
+  # SQLite 数据源
+  datasource:
+    url: jdbc:sqlite:${docsy.data-dir:./data}/docsy.db
+    driver-class-name: org.sqlite.JDBC
+    # SQLite 不需要用户名密码
+  # Thymeleaf 模板引擎
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    cache: false
+  # 文件上传限制
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+  # Jackson
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+# Docsy 自定义配置
+docsy:
+  # 数据目录（SQLite 数据库、上传文件等）
+  data-dir: ./data
+  # 文件存储路径
+  file-store: ${docsy.data-dir}/files
+  # JWT 配置
+  jwt:
+    secret: ${DOCSY_JWT_SECRET:docsy-default-jwt-secret-please-change-in-production-2024}
+    expiration: 86400000  # 24小时（毫秒）
+  # 三方应用签名有效期（秒）
+  sign-expire-seconds: 300
+  # 预览会话过期时间（分钟）
+  session-expire-minutes: 120
+  # OnlyOffice WASM 静态资源路径
+  onlyoffice-path: /static/onlyoffice
+
+# Actuator 健康检查
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.docsy: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n"

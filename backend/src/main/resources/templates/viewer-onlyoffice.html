@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/viewer-shell :: head(${fileName})}"></head>
+<body>
+    <div th:replace="~{fragments/viewer-shell :: toolbar}"></div>
+
+    <div class="viewer-content" data-file-url="" th:data-file-url="${fileContentUrl}">
+        <iframe id="onlyoffice-frame"
+                th:src="@{/onlyoffice/office.html}"
+                style="width: 100%; height: 100%; border: none;"
+                allow="fullscreen">
+        </iframe>
+    </div>
+
+    <div th:replace="~{fragments/viewer-shell :: statusbar}"></div>
+
+    <script th:replace="~{fragments/viewer-shell :: scripts}"></script>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const sessionId = /*[[${sessionId}]]*/ '';
+        const fileContentUrl = /*[[${fileContentUrl}]]*/ '';
+        const editable = /*[[${editable}]]*/ false;
+        const fileName = /*[[${fileName}]]*/ '';
+        const fileType = /*[[${fileType}]]*/ '';
+
+        const iframe = document.getElementById('onlyoffice-frame');
+
+        iframe.addEventListener('load', () => {
+            // 等待 OnlyOffice WASM 加载完成后，发送文件
+            setTimeout(() => {
+                iframe.contentWindow.postMessage({
+                    type: 'document:open-url',
+                    payload: {
+                        url: window.location.origin + fileContentUrl,
+                        fileName: fileName,
+                        fileType: fileType,
+                        mode: editable ? 'edit' : 'view'
+                    }
+                }, '*');
+            }, 1000);
+        });
+
+        // 监听保存事件（OnlyOffice WASM 编辑后通过 postMessage 返回文件流）
+        window.addEventListener('message', async (e) => {
+            if (e.data?.type === 'document:saved') {
+                const fileBlob = e.data.payload.file;
+                try {
+                    const resp = await fetch('/api/files/' + sessionId + '/content', {
+                        method: 'PUT',
+                        body: fileBlob
+                    });
+                    if (resp.ok) {
+                        console.log('文件保存成功');
+                    } else {
+                        console.error('文件保存失败:', resp.statusText);
+                    }
+                } catch (err) {
+                    console.error('保存请求异常:', err);
+                }
+            }
+            // 文档加载完成
+            if (e.data?.type === 'document:opened') {
+                console.log('文档已加载');
+            }
+        });
+        /*]]>*/
+    </script>
+</body>
+</html>

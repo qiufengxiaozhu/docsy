@@ -1,0 +1,30 @@
+# Build output
+backend/target/
+frontend/dist/
+frontend/node_modules/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.cursor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (runtime generated)
+data/
+logs/
+*.log
+
+# Environment
+.env
+.env.local
+
+# Maven
+*.jar
+!.mvn/wrapper/*.jar
+
+# Frontend
+frontend/.cache/
