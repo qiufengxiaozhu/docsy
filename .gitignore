@@ -12,6 +12,7 @@ frontend/node_modules/
 *.iml
 .vscode/
 .cursor/
+!.cursor/rules/
 
 # OS
 .DS_Store
