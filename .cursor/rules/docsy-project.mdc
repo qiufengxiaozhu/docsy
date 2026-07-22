@@ -9,7 +9,7 @@ alwaysApply: true
 
 ## 技术栈
 
-- **后端**: Java 21 + Spring Boot 3.4.4 + SQLite (sqlite-jdbc) + Spring Data JDBC
+- **后端**: Java 21 + Spring Boot 3.4.4 + MyBatis-Plus 3.5.9 + SQLite（默认）/ MySQL（可切换）
 - **前端**: Vue 3 + Vite + Element Plus（管理后台）
 - **Office/PDF 引擎**: OnlyofficePersonal 9.3（纯 WASM，浏览器内运行，无服务端）
 - **预览页面模板**: Thymeleaf
@@ -24,10 +24,10 @@ docsy/
 ├── backend/                  # Spring Boot 后端（Maven 子模块）
 │   ├── pom.xml
 │   └── src/main/java/com/docsy/
-│       ├── config/           # 配置（DocsyProperties, ViewerRegistry, WebConfig）
+│       ├── config/           # 配置（DocsyProperties, ViewerRegistry, WebConfig, MyBatisConfig）
 │       ├── controller/       # REST API + Thymeleaf 页面控制器
 │       ├── model/            # entity/ + dto/
-│       ├── repository/       # Spring Data JDBC 接口
+│       ├── mapper/           # MyBatis-Plus Mapper 接口（BaseMapper）
 │       ├── service/          # 业务逻辑
 │       └── security/         # JWT + HMAC 认证
 ├── frontend/                 # Vue 3 管理后台
@@ -35,12 +35,30 @@ docsy/
 │   ├── src/components/       # Layout.vue 侧边栏布局
 │   └── src/stores/           # Pinia (user store)
 ├── onlyoffice/               # OnlyOffice WASM 静态资源（运行时安装，不在 git 中）
+├── onlyoffice-custom/        # OnlyOffice 定制化覆盖层（纳入 git）
 ├── scripts/setup-onlyoffice.sh
 ├── Dockerfile
 └── docker-compose.yml
 ```
 
 ## 核心架构设计
+
+### MyBatis-Plus ORM
+
+使用 MyBatis-Plus 3.5.9 作为 ORM 框架，支持 SQLite 和 MySQL 双数据库：
+- Mapper 接口继承 `BaseMapper<T>`，位于 `com.docsy.mapper` 包
+- 实体类使用 `@TableName`、`@TableId(type = IdType.AUTO)` 注解
+- 时间字段使用 `LocalDateTime` + `@TableField(fill = FieldFill.INSERT)` 自动填充
+- 查询使用 `LambdaQueryWrapper` / `LambdaUpdateWrapper`，避免硬编码字段名
+- 分页插件通过 `mybatis-plus-jsqlparser` 独立引入（3.5.9+ 必须）
+- `MyBatisConfig.java` 配置 MapperScan、分页插件（自动识别 DB 类型）、MetaObjectHandler
+
+### 多数据库支持
+
+- **默认 SQLite**: `application.yml` 中配置，schema 文件 `schema.sql`
+- **MySQL 切换**: 启动时加 `--spring.profiles.active=mysql`，schema 文件 `schema-mysql.sql`
+- **原则**: 业务 SQL 不使用方言特有语法，时间比较在 Java 侧用 `LocalDateTime.now()` 传参
+- `DataSourceConfig.java` 根据 driver-class-name 自动选择对应的 schema 文件
 
 ### ViewerRegistry（格式可扩展）
 
@@ -78,6 +96,14 @@ window.addEventListener('message', (e) => {
 });
 ```
 
+### OnlyOffice 定制化机制
+
+采用分层覆盖策略：
+- `onlyoffice/` — 原始资源（git ignored，运行时通过 `setup-onlyoffice.sh` 安装 9.3 版本）
+- `onlyoffice-custom/` — 定制化覆盖层（纳入 git），同路径文件优先级高于原始资源
+- `WebConfig.java` 注册双资源位置，Spring 按顺序查找，定制化目录优先
+- 需要修改核心编辑器文件时，在 `onlyoffice-custom/patches/README.md` 记录修改说明
+
 ### 三方应用集成
 
 签名算法与 docsz 一致：
@@ -92,16 +118,18 @@ window.addEventListener('message', (e) => {
 
 ## 开发注意事项
 
-1. **SQLite 限制**: 不支持并发写入，适合中小规模部署。如需高并发可切换为 MySQL。
-2. **OnlyOffice WASM 资源**: 不纳入 git，需运行 `scripts/setup-onlyoffice.sh` 安装。
-3. **前端路由**: 管理后台路径为 `/admin/`，预览页面路径为 `/view/{sessionId}`。
-4. **CORS**: 管理后台前端开发时通过 Vite proxy 代理 `/api` 到 8080。
-5. **密码**: 默认管理员 admin/admin123（BCrypt 加密）。
-6. **参考项目**: 旧版 docsy 在 `/opt/docsy`（WSL），前端使用 Vben Admin，可参考其 UI 风格。
-7. **连接器 (Connector)**: OnlyOffice 的 Automation API，可通过 `docEditor.createConnector()` 在父页面操控编辑器内部文档内容（高级功能，非必须）。
-8. **文件流**: 编辑后 WASM 通过 postMessage 返回完整文件 Blob 给父页面上传后端。
-9. **Spring Data JDBC**: 使用 CrudRepository 接口，实体类用 `@Table` 和 `@Id` 注解。
-10. **Thymeleaf Fragment**: 预览页面使用 `th:replace` 引用公共 Shell。
+1. **数据库切换**: 默认 SQLite，需 MySQL 时加 `--spring.profiles.active=mysql`。SQLite 不支持并发写入，适合中小规模部署。
+2. **OnlyOffice WASM 资源**: 不纳入 git（~1.13 GB），需运行 `scripts/setup-onlyoffice.sh` 安装 9.3 版本。
+3. **OnlyOffice 定制化**: 将要定制的文件放入 `onlyoffice-custom/` 同路径下即可覆盖原文件。
+4. **前端路由**: 管理后台路径为 `/admin/`，预览页面路径为 `/view/{sessionId}`。
+5. **CORS**: 管理后台前端开发时通过 Vite proxy 代理 `/api` 到 8080。
+6. **密码**: 默认管理员 admin/admin123（BCrypt 加密）。
+7. **参考项目**: 旧版 docsy 在 `/opt/docsy`（WSL），前端使用 Vben Admin，可参考其 UI 风格。
+8. **连接器 (Connector)**: OnlyOffice 的 Automation API，可通过 `docEditor.createConnector()` 在父页面操控编辑器内部文档内容（高级功能，非必须）。
+9. **文件流**: 编辑后 WASM 通过 postMessage 返回完整文件 Blob 给父页面上传后端。
+10. **MyBatis-Plus**: 使用 BaseMapper 接口，实体类用 `@TableName` 和 `@TableId` 注解，查询用 LambdaQueryWrapper。
+11. **Thymeleaf Fragment**: 预览页面使用 `th:replace` 引用公共 Shell。
+12. **静态资源路径**: OnlyOffice 使用文件系统路径（`file:../onlyoffice/`），不打入 JAR，开发时从 backend/ 目录启动。
 
 ## 与 docsz 的关系
 
